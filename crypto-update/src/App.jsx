@@ -1,10 +1,10 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import CryptoHome from './pages/CryptoHome';
 import CryptoDetail from './pages/CryptoDetail';
 import Header from "./components/Header";
 import "./App.css";
-function App() {
 
+function App() {
   return (
     <BrowserRouter>
       <Header />
@@ -13,7 +13,7 @@ function App() {
         <Route path="/coin/:id" element={<CryptoDetail />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;
