@@ -1,134 +1,100 @@
 import React, { useEffect, useState } from "react";
+import { ethers } from "ethers";  // Import ethers.js
 import { Input, Modal } from "antd";
 import { ArrowDownOutlined, DownOutlined } from "@ant-design/icons";
 import tokenList from "../tokenList.json";
-import axios from "axios";
+import dexAbi from "../abiDEX.json";  // Import ABI
+
+const dexAddress = "0x30f724e1647f735c66b12acE291B527B37Aa3e5F";  // Thay bằng địa chỉ DEX của bạn
 
 const Swap = () => {
   const [tokenOneAmount, setTokenOneAmount] = useState(null);
   const [tokenTwoAmount, setTokenTwoAmount] = useState(null);
   const [tokenOne, setTokenOne] = useState(tokenList[0]);
   const [tokenTwo, setTokenTwo] = useState(tokenList[1]);
-  const [prices, setPrices] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [changeToken, setChangeToken] = useState(1);
+  const [dexContract, setDexContract] = useState(null);
+  const [signer, setSigner] = useState(null);
 
+  // Khởi tạo ethers.js và kết nối với DEX contract
   useEffect(() => {
-    fetchPrices(tokenOne.address, tokenTwo.address);
+    const init = async () => {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(dexAddress, dexAbi, signer);
+      setDexContract(contract);
+      setSigner(signer);
+    };
+    init();
   }, []);
-
-  async function fetchPrices(one, two) {
-    const res = await axios.get(`http://localhost:3001/tokenPrice`, {
-      params: { addressOne: one, addressTwo: two },
-    });
-    setPrices(res.data);
-  }
 
   function changeAmount(e) {
     const value = e.target.value;
     setTokenOneAmount(value);
-    if (value && prices) {
-      setTokenTwoAmount((value * prices.ratio).toFixed(2));
+    if (value && dexContract) {
+      const ratio = 1;  // Bạn có thể cập nhật ratio từ Moralis API
+      setTokenTwoAmount((value * ratio).toFixed(2));
     } else {
       setTokenTwoAmount(null);
     }
   }
 
-  function switchTokens() {
-    const temp = tokenOne;
-    setTokenOne(tokenTwo);
-    setTokenTwo(temp);
-    fetchPrices(tokenTwo.address, tokenOne.address);
-  }
+  async function executeSwap() {
+    if (!dexContract) return alert("DEX contract not connected");
 
-  function openModal(asset) {
-    setChangeToken(asset);
-    setIsOpen(true);
-  }
-
-  function modifyToken(i) {
-    setPrices(null);
-    setTokenOneAmount(null);
-    setTokenTwoAmount(null);
-    if (changeToken === 1) {
-      setTokenOne(tokenList[i]);
-      fetchPrices(tokenList[i].address, tokenTwo.address);
-    } else {
-      setTokenTwo(tokenList[i]);
-      fetchPrices(tokenOne.address, tokenList[i].address);
+    try {
+      const tx = await dexContract.swap(
+        tokenOne.address,
+        ethers.utils.parseUnits(tokenOneAmount, 18),  // Chuyển số lượng sang wei
+        tokenTwo.address,
+        ethers.utils.parseUnits("1", 18)  // Giả định giá mong muốn là 1
+      );
+      await tx.wait();
+      alert("Swap thành công!");
+    } catch (error) {
+      console.error("Swap failed:", error);
+      alert("Swap thất bại!");
     }
-    setIsOpen(false);
   }
 
   return (
     <div className="my-6">
       <div className="container d-block">
-        <div className="top"></div>
-        <div className="bot d-flex">
-          <div className="chart-box"></div>
-          <div className="swap-box">
-            <Modal
-              open={isOpen}
-              footer={null}
-              onCancel={() => setIsOpen(false)}
-              title="Select a token"
-            >
-              <div className="modalContent">
-                {tokenList?.map((e, i) => (
-                  <div
-                    className="tokenChoice"
-                    key={i}
-                    onClick={() => modifyToken(i)}
-                  >
-                    <img src={e.img} alt={e.ticker} className="tokenLogo" />
-                    <div className="tokenChoiceNames">
-                      <div className="tokenName">{e.name}</div>
-                      <div className="tokenTicker">{e.ticker}</div>
-                    </div>
-                  </div>
-                ))}
+        <div className="swap-box">
+          <Modal
+            open={isOpen}
+            footer={null}
+            onCancel={() => setIsOpen(false)}
+            title="Select a token"
+          >
+            {tokenList.map((e, i) => (
+              <div key={i} onClick={() => setTokenOne(tokenList[i])}>
+                <img src={e.img} alt={e.ticker} className="tokenLogo" />
+                <div>{e.name}</div>
               </div>
-            </Modal>
-            <div className="tradeBox">
-              <div className="tradeBoxHeader">
-                <h4>Swap</h4>
+            ))}
+          </Modal>
+          <div className="tradeBox">
+            <h4>Swap</h4>
+            <div className="inputs">
+              <Input placeholder="0" value={tokenOneAmount} onChange={changeAmount} />
+              <div className="assetOne" onClick={() => setIsOpen(true)}>
+                <img src={tokenOne.img} alt="assetOneLogo" className="assetLogo" />
+                {tokenOne.ticker}
+                <DownOutlined />
               </div>
-              <div className="inputs">
-                <Input
-                  placeholder="0"
-                  value={tokenOneAmount}
-                  onChange={changeAmount}
-                  disabled={!prices}
-                />
-                <div className="assetOne" onClick={() => openModal(1)}>
-                  <img
-                    src={tokenOne.img}
-                    alt="assetOneLogo"
-                    className="assetLogo"
-                  />
-                  {tokenOne.ticker}
-                  <DownOutlined />
-                </div>
-                <Input
-                  placeholder="0"
-                  value={tokenTwoAmount}
-                  disabled={true}
-                />
-                <div className="switchButton" onClick={switchTokens}>
-                  <ArrowDownOutlined className="switchArrow" />
-                </div>
-                <div className="assetTwo" onClick={() => openModal(2)}>
-                  <img
-                    src={tokenTwo.img}
-                    alt="assetTwoLogo"
-                    className="assetLogo"
-                  />
-                  {tokenTwo.ticker}
-                  <DownOutlined />
-                </div>
+              <Input placeholder="0" value={tokenTwoAmount} disabled={true} />
+              <div className="switchButton" onClick={() => [setTokenOne(tokenTwo), setTokenTwo(tokenOne)]}>
+                <ArrowDownOutlined />
               </div>
-              <div className="swapButton">Swap</div>
+              <div className="assetTwo">
+                <img src={tokenTwo.img} alt="assetTwoLogo" className="assetLogo" />
+                {tokenTwo.ticker}
+                <DownOutlined />
+              </div>
             </div>
+            <button onClick={executeSwap} className="swapButton">Swap</button>
           </div>
         </div>
       </div>
