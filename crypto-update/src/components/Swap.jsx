@@ -5,7 +5,7 @@ import { ArrowDownOutlined, DownOutlined } from "@ant-design/icons";
 import tokenList from "../tokenList.json";
 import dexAbi from "../abiDEX.json";  // Import ABI
 
-const dexAddress = "0x30f724e1647f735c66b12acE291B527B37Aa3e5F";  // Thay bằng địa chỉ DEX của bạn
+const dexAddress = "0xBFBDe99EFCAE216c8E1e8D8ba6Eb551dEB0a97E8";
 
 const Swap = () => {
   const [tokenOneAmount, setTokenOneAmount] = useState(null);
